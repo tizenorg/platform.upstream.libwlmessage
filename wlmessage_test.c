@@ -11,7 +11,7 @@ int main (int argc, char *argv[])
 	wlmessage_set_titlebuttons (wlmessage, WLMESSAGE_TITLEBUTTON_MINIMIZE
 	                                     | WLMESSAGE_TITLEBUTTON_CLOSE);
 	wlmessage_set_noresize (wlmessage, 1);
-	wlmessage_set_icon (wlmessage, "/usr/share/pixmaps/debian.png");
+	wlmessage_set_icon (wlmessage, "/usr/share/pixmaps/debian-logo.png");
 	wlmessage_set_message (wlmessage, "MyMessage");
 	wlmessage_set_textfield (wlmessage, "MyText");
 	wlmessage_add_button (wlmessage, 1, "Ok");

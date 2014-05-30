@@ -6,6 +6,7 @@
 #include <glib.h>
 
 #include "window.h"
+#include "text-client-protocol.h"
 #include "libwlmessage.h"
 #define MAX_LINES 6
 
@@ -54,6 +55,7 @@ struct entry {
 
 struct wlmessage {
 	struct message_window *message_window;
+	struct wl_text_input_manager *text_input_manager;
 	int default_value;
 	int timeout;
 };
@@ -106,6 +108,179 @@ get_lines (char *text)
 
  /* ---------------------------------------- */
 
+ /* -- VIRTUAL KEYBOARD FUNCTIONS -- */
+
+static void
+text_input_enter(void *data,
+                 struct wl_text_input *text_input,
+                 struct wl_surface *surface)
+{
+}
+
+static void
+text_input_leave(void *data,
+                 struct wl_text_input *text_input)
+{
+}
+
+static void
+text_input_modifiers_map(void *data,
+                         struct wl_text_input *text_input,
+                         struct wl_array *map)
+{
+}
+
+static void
+text_input_input_panel_state(void *data,
+                             struct wl_text_input *text_input,
+                             uint32_t state)
+{
+}
+
+static void
+text_input_preedit_string(void *data,
+                          struct wl_text_input *text_input,
+                          uint32_t serial,
+                          const char *text,
+                          const char *commit)
+{
+	struct entry *entry = data;
+	char *new_text;
+
+	if (strlen(entry->text) >= 18)
+		return;
+
+	 /* workaround to prevent using Backspace for now */
+	if (strlen(text) < entry->last_vkb_len) {
+		entry->last_vkb_len = strlen(text);
+		return;
+	} else {
+		entry->last_vkb_len = strlen(text);
+	}
+
+	new_text = malloc (strlen(entry->text) + 1 + 1);
+	strncpy (new_text, entry->text, entry->cursor_pos);
+	strcpy (new_text+entry->cursor_pos, text+(strlen(text)-1));
+	strcpy (new_text+entry->cursor_pos+1, entry->text+entry->cursor_pos);
+	free (entry->text);
+	entry->text = new_text;
+	entry->cursor_pos++;
+
+	widget_schedule_redraw (entry->widget);
+}
+
+static void
+text_input_preedit_styling(void *data,
+                           struct wl_text_input *text_input,
+                           uint32_t index,
+                           uint32_t length,
+                           uint32_t style)
+{
+}
+
+static void
+text_input_preedit_cursor(void *data,
+                          struct wl_text_input *text_input,
+                          int32_t index)
+{
+}
+
+static void
+text_input_commit_string(void *data,
+                         struct wl_text_input *text_input,
+                         uint32_t serial,
+                         const char *text)
+{
+}
+
+static void
+text_input_cursor_position(void *data,
+                           struct wl_text_input *text_input,
+                           int32_t index,
+                           int32_t anchor)
+{
+}
+
+static void
+text_input_keysym(void *data,
+                  struct wl_text_input *text_input,
+                  uint32_t serial,
+                  uint32_t time,
+                  uint32_t sym,
+                  uint32_t state,
+                  uint32_t modifiers)
+{
+	struct entry *entry = data;
+	char *new_text;
+
+	if (state == WL_KEYBOARD_KEY_STATE_PRESSED)
+		return;
+
+	 /* use Tab as Backspace until I figure this out */
+	if (sym == XKB_KEY_Tab) {
+		if (entry->cursor_pos != 0) {
+			new_text = malloc (strlen(entry->text));
+			strncpy (new_text, entry->text, entry->cursor_pos - 1);
+			strcpy (new_text+entry->cursor_pos-1, entry->text+entry->cursor_pos);
+			free (entry->text);
+			entry->text = new_text;
+			entry->cursor_pos--;
+		}
+	}	
+
+	if (sym == XKB_KEY_Left) {
+		if (entry->cursor_pos != 0)
+			entry->cursor_pos--;
+	}
+
+	if (sym == XKB_KEY_Right) {
+		if (entry->cursor_pos != strlen (entry->text))
+			entry->cursor_pos++;
+	}
+
+	if (sym == XKB_KEY_Return) {
+		//fprintf (stdout, entry->text);
+		wlmessage_destroy (entry->message_window->wlmessage);
+		exit (entry->message_window->wlmessage->default_value);
+	}
+
+	widget_schedule_redraw (entry->widget);
+}
+
+static void
+text_input_language(void *data,
+                    struct wl_text_input *text_input,
+                    uint32_t serial,
+                    const char *language)
+{
+}
+
+static void
+text_input_text_direction(void *data,
+                          struct wl_text_input *text_input,
+                          uint32_t serial,
+                          uint32_t direction)
+{
+}
+
+static const struct wl_text_input_listener text_input_listener = {
+	text_input_enter,
+	text_input_leave,
+	text_input_modifiers_map,
+	text_input_input_panel_state,
+	text_input_preedit_string,
+	text_input_preedit_styling,
+	text_input_preedit_cursor,
+	text_input_commit_string,
+	text_input_cursor_position,
+	NULL,
+	text_input_keysym,
+	text_input_language,
+	text_input_text_direction
+};
+
+ /* ---------------------------------------- */
+
  /* -- HANDLERS -- */
 
 
@@ -120,17 +295,15 @@ entry_click_handler(struct widget *widget,
 	widget_schedule_redraw (widget);
 
 	if (state == WL_POINTER_BUTTON_STATE_PRESSED && button == BTN_LEFT) {
-#if 0
 		if (!entry->text_input) {
-			entry->text_input = wl_text_input_manager_create_text_input (text_input_manager);
+			entry->text_input = wl_text_input_manager_create_text_input (entry->message_window->wlmessage->text_input_manager);
 			wl_text_input_add_listener (entry->text_input, &text_input_listener, entry);
 		}
 
 		struct wl_seat *seat = input_get_seat (input);
-		struct wl_surface *surface = window_get_wl_surface (message_window->window);
+		struct wl_surface *surface = window_get_wl_surface (entry->message_window->window);
 		wl_text_input_show_input_panel (entry->text_input);
 		wl_text_input_activate (entry->text_input, seat, surface);
-#endif
 
 		entry->active = 1;
 	}
@@ -144,17 +317,17 @@ entry_touch_handler(struct widget *widget, struct input *input,
 	struct entry *entry = data;
 
 	widget_schedule_redraw (widget);
-#if 0
+
 	if (!entry->text_input) {
-		entry->text_input = wl_text_input_manager_create_text_input (text_input_manager);
+		entry->text_input = wl_text_input_manager_create_text_input (entry->message_window->wlmessage->text_input_manager);
 		wl_text_input_add_listener (entry->text_input, &text_input_listener, entry);
 	}
 
 	struct wl_seat *seat = input_get_seat (input);
-	struct wl_surface *surface = window_get_wl_surface (message_window->window);
+	struct wl_surface *surface = window_get_wl_surface (entry->message_window->window);
 	wl_text_input_show_input_panel (entry->text_input);
 	wl_text_input_activate (entry->text_input, seat, surface);
-#endif
+
 	entry->active = 1;
 }
 
@@ -527,8 +700,11 @@ static void
 global_handler(struct display *display, uint32_t name,
 	       const char *interface, uint32_t version, void *data)
 {
+	struct wlmessage *wlmessage = data;
+
 	if (!strcmp(interface, "wl_text_input_manager")) {
-		text_input_manager = display_bind (display, name, &wl_text_input_manager_interface, 1);
+		wlmessage->text_input_manager = display_bind (display, name,
+		                                              &wl_text_input_manager_interface, 1);
 	}
 }
 
@@ -880,6 +1056,7 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 	                        280 + lines_nb*16 + (!message_window->entry ? 0 : 1)*32
 	                                          + (!message_window->buttons_nb ? 0 : 1)*32);
 
+	display_set_user_data (display, wlmessage);
 	display_set_global_handler (display, global_handler);
 	display_run (display);
 
