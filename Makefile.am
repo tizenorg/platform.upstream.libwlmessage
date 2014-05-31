@@ -31,7 +31,7 @@ libwlmessage_la_CPPFLAGS = $(AM_CPPFLAGS) -Wno-unused-result
 libwlmessage_la_CFLAGS = $(GCC_CFLAGS) $(PNG_CFLAGS) $(PIXMAN_CFLAGS) $(CLIENT_CFLAGS) $(CAIRO_EGL_CFLAGS) $(GLIB_CFLAGS)
 libwlmessage_la_LIBADD = $(DLOPEN_LIBS) $(PNG_LIBS) $(PIXMAN_LIBS) $(CLIENT_LIBS) $(CAIRO_EGL_LIBS) $(JPEG_LIBS) $(GLIB_LIBS) -lm
 
-bin_PROGRAMS += wlmessage_test
+noinst_PROGRAMS = wlmessage_test
 
 wlmessage_test_LDFLAGS = -export-dynamic
 wlmessage_test_CPPFLAGS = $(AM_CPPFLAGS) -Wno-unused-result
