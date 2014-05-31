@@ -67,5 +67,6 @@ make %{?_smp_mflags}
 %defattr(-,root,root)
 %{_includedir}/libwlmessage.h
 %{_libdir}/*.so
+%{_libdir}/pkgconfig/*.pc
 
 %changelog

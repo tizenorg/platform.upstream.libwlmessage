@@ -10,6 +10,9 @@ AM_CPPFLAGS = 					\
 
 CLEANFILES =
 
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libwlmessage.pc
+
 lib_LTLIBRARIES = libwlmessage.la
 
 include_HEADERS = libwlmessage.h

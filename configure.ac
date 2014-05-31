@@ -97,7 +97,7 @@ PKG_CHECK_MODULES(CLIENT, [wayland-client cairo >= 1.10.0 xkbcommon wayland-curs
 AM_CONDITIONAL(HAVE_CAIRO_GLESV2,
 	       [test "x$have_cairo_egl" = "xyes" -a "x$cairo_modules" = "xcairo-glesv2" -a "x$enable_egl" = "xyes"])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile libwlmessage.pc])
 
 AC_OUTPUT
 
