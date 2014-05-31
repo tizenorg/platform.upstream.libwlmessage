@@ -10,7 +10,9 @@ AM_CPPFLAGS = 					\
 
 CLEANFILES =
 
-noinst_LTLIBRARIES = libwlmessage.la
+lib_LTLIBRARIES = libwlmessage.la
+
+include_HEADERS = libwlmessage.h
 
 libwlmessage_la_SOURCES =					\
 	libwlmessage.c					\
