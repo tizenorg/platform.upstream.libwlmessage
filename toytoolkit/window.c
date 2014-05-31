@@ -5362,9 +5362,9 @@ display_destroy_inputs(struct display *display)
 void
 display_destroy(struct display *display)
 {
-	if (!wl_list_empty(&display->window_list))
+	/*if (!wl_list_empty(&display->window_list))
 		fprintf(stderr, "toytoolkit warning: %d windows exist.\n",
-			wl_list_length(&display->window_list));
+			wl_list_length(&display->window_list));*/
 
 	if (!wl_list_empty(&display->deferred_list))
 		fprintf(stderr, "toytoolkit warning: deferred tasks exist.\n");

@@ -20,7 +20,6 @@ struct message_window {
 	char *title;
 	int frame_type;	/* for titlebuttons */
 	int resizable;
-
 	cairo_surface_t *icon;
 	struct entry *entry;
 	int buttons_nb;
@@ -54,9 +53,10 @@ struct entry {
 };
 
 struct wlmessage {
+	struct display *display;
 	struct message_window *message_window;
 	struct wl_text_input_manager *text_input_manager;
-	int default_value;
+	int return_value;
 	int timeout;
 };
 
@@ -239,9 +239,7 @@ text_input_keysym(void *data,
 	}
 
 	if (sym == XKB_KEY_Return) {
-		//fprintf (stdout, entry->text);
-		wlmessage_destroy (entry->message_window->wlmessage);
-		exit (entry->message_window->wlmessage->default_value);
+		display_exit (entry->message_window->wlmessage->display);
 	}
 
 	widget_schedule_redraw (entry->widget);
@@ -411,12 +409,11 @@ entry_redraw_handler (struct widget *widget, void *data)
 }
 
 void
-button_send_activate (struct button *button, int value)
+button_send_activate (struct button *button)
 {
-	if (button->message_window->entry)
-		fprintf (stdout, button->message_window->entry->text);
-	wlmessage_destroy (button->message_window->wlmessage);
-	exit (value);
+	button->message_window->wlmessage->return_value = button->value;
+
+	display_exit (button->message_window->wlmessage->display);
 }
 
 static void
@@ -433,7 +430,7 @@ button_click_handler(struct widget *widget,
 		button->pressed = 1;
 	} else {
 		button->pressed = 0;
-		button_send_activate (button, button->value);
+		button_send_activate (button);
 	}
 }
 
@@ -458,7 +455,7 @@ button_touch_up_handler(struct widget *widget, struct input *input,
 	button->focused = 0;
 	widget_schedule_redraw (widget);
 
-	button_send_activate (button, button->value);
+	button_send_activate (button);
 }
 
 static int
@@ -539,14 +536,8 @@ key_handler (struct window *window, struct input *input, uint32_t time,
 	if (state == WL_KEYBOARD_KEY_STATE_RELEASED)
 		return;
 
-	if (sym == XKB_KEY_Return || sym == XKB_KEY_KP_Enter) {
-#if 0
-		if (entry)
-			fprintf (stdout, entry->text);
-#endif
-		wlmessage_destroy (message_window->wlmessage);
-		exit (message_window->wlmessage->default_value);
-	}
+	if (sym == XKB_KEY_Return || sym == XKB_KEY_KP_Enter)
+		display_exit (message_window->wlmessage->display);
 
 	if (entry && entry->active) {
 		switch (sym) {
@@ -937,7 +928,7 @@ wlmessage_set_default_button (struct wlmessage *wlmessage, int index)
 
 	wl_list_for_each (button, &message_window->button_list, link) {
 		if (button->value == index)
-				wlmessage->default_value = button->value;
+				wlmessage->return_value = button->value;
 	}
 }
 
@@ -1000,22 +991,22 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 		return 0;
 
 	struct message_window *message_window = wlmessage->message_window;
-	struct display *display = NULL;
 	struct entry *entry;
 	struct button *button;
 	int extended_width = 0;
 	int lines_nb = 0;
 
-	display = display_create (NULL, NULL);
-	if (!display) {
+	wlmessage->display = NULL;
+	wlmessage->display = display_create (NULL, NULL);
+	if (!wlmessage->display) {
 		fprintf (stderr, "Failed to connect to a Wayland compositor !\n");
-		return -1;	// HUH ?
+		return -1;	/* HUH ? */
 	}
 
 	if (wlmessage->timeout)
-		display_set_timeout (display, wlmessage->timeout);
+		display_set_timeout (wlmessage->display, wlmessage->timeout);
 
-	message_window->window = window_create (display);
+	message_window->window = window_create (wlmessage->display);
 	message_window->widget = window_frame_create (message_window->window,
 	                                              message_window->frame_type,
 	                                              message_window->resizable, message_window);
@@ -1056,11 +1047,15 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 	                        280 + lines_nb*16 + (!message_window->entry ? 0 : 1)*32
 	                                          + (!message_window->buttons_nb ? 0 : 1)*32);
 
-	display_set_user_data (display, wlmessage);
-	display_set_global_handler (display, global_handler);
-	display_run (display);
+	display_set_user_data (wlmessage->display, wlmessage);
+	display_set_global_handler (wlmessage->display, global_handler);
+	display_run (wlmessage->display);
 
-	return 0;
+	display_destroy (wlmessage->display);
+
+	if (input_text && message_window->entry)
+		*input_text = strdup (message_window->entry->text);
+	return wlmessage->return_value;
 }
 
 struct wlmessage *
@@ -1069,7 +1064,7 @@ wlmessage_create ()
 	struct wlmessage *wlmessage;
 
 	wlmessage = xzalloc (sizeof *wlmessage);
-	wlmessage->default_value = 0;
+	wlmessage->return_value = 0;
 	wlmessage->timeout = 0;
 
 	wlmessage->message_window = xzalloc (sizeof *wlmessage->message_window);

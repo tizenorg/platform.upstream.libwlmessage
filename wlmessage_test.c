@@ -16,10 +16,14 @@ int main (int argc, char *argv[])
 	wlmessage_set_textfield (wlmessage, "MyText");
 	wlmessage_add_button (wlmessage, 1, "Ok");
 	wlmessage_add_button (wlmessage, 0, "Cancel");
-	wlmessage_set_default_button (wlmessage, 0);
+	wlmessage_set_default_button (wlmessage, 1);
 
 	int result;
-	result = wlmessage_show (wlmessage, NULL);
+	char *text;
+	result = wlmessage_show (wlmessage, &text);
+
+	printf ("Button : %d\n", result);
+	printf ("Text : %s\n", text);
 
 	wlmessage_destroy (wlmessage);
 
