@@ -1482,6 +1482,7 @@ window_destroy(struct window *window)
 
 	wl_list_remove(&window->redraw_task.link);
 
+/*
 	wl_list_for_each(input, &display->input_list, link) {	  
 		if (input->touch_focus == window)
 			input->touch_focus = NULL;
@@ -1493,6 +1494,7 @@ window_destroy(struct window *window)
 		    input->focus_widget->window == window)
 			input->focus_widget = NULL;
 	}
+*/
 
 	wl_list_for_each_safe(window_output, window_output_tmp,
 			      &window->window_output_list, link) {
@@ -1608,10 +1610,12 @@ widget_destroy(struct widget *widget)
 	if (widget->tooltip)
 		widget_destroy_tooltip(widget);
 
+/*
 	wl_list_for_each(input, &display->input_list, link) {
 		if (input->focus_widget == widget)
 			input->focus_widget = NULL;
 	}
+*/
 
 	wl_list_remove(&widget->link);
 	free(widget);
