@@ -71,10 +71,11 @@ get_number_of_lines (char *text)
 
 	gchar **lines = g_strsplit (text, "\n", -1);
 
-	while ((lines[lines_num] != NULL) && (lines_num < MAX_LINES))
-		lines_num++;
-
-	g_strfreev (lines);
+	if (lines) {
+		while ((lines[lines_num] != NULL) && (lines_num < MAX_LINES))
+			lines_num++;
+		g_strfreev (lines);
+	}
 
 	return lines_num;
 }
@@ -87,13 +88,14 @@ get_max_length_of_lines (char *text)
 
 	gchar **lines = g_strsplit (text, "\n", -1);
 
-	while ((lines[lines_num] != NULL) && (lines_num < MAX_LINES)) {
-		if (strlen (lines[lines_num]) > length)
-			length = strlen (lines[lines_num]);
-		lines_num++;
+	if (lines) {
+		while ((lines[lines_num] != NULL) && (lines_num < MAX_LINES)) {
+			if (strlen (lines[lines_num]) > length)
+				length = strlen (lines[lines_num]);
+			lines_num++;
+		}
+		g_strfreev (lines);
 	}
-
-	g_strfreev (lines);
 
 	return length;
 }
