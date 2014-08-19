@@ -2,14 +2,14 @@
 
 Name:           libwlmessage
 Version:        0.1
-Release:        1
-Summary:        A library to display messages or dialog boxes under Wayland
+Release:        0
+Summary:        A library to display interactive dialog boxes under Wayland
 License:        MIT
 Group:          Graphics & UI Framework/Wayland Window System
 Url:            https://github.com/Tarnyko/libwlmessage.git
 
-Source0:         %name-%version.tar.xz
-Source1: 	libwlmessage.manifest
+Source0:        %name-%version.tar.xz
+Source1:        %name.manifest
 BuildRequires:	autoconf >= 2.64, automake >= 1.11
 BuildRequires:  libtool >= 2.2
 BuildRequires:  libjpeg-devel
@@ -34,10 +34,10 @@ ExclusiveArch:
 %endif
 
 %description
-A library to display messages or dialog boxes under Wayland.
+libwlmessage is a very tiny and toolkit-independent library, able to display interactive dialog boxes under Wayland.
 
 %package devel
-Summary:	Development components for the %{name} package.
+Summary:	Development components for the %{name} package
 Group:		Development/Libraries
 Requires:	%{name} = %{version}
 
@@ -54,7 +54,9 @@ make %{?_smp_mflags}
 
 %install
 %make_install
-# install binaries
+
+%post -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
 
 %files
 %manifest %{name}.manifest
