@@ -49,7 +49,7 @@ Development files for %{name}
 cp %{SOURCE1} .
 
 %build
-%reconfigure
+%reconfigure --enable-xdg-shell
 make %{?_smp_mflags}
 
 %install
