@@ -685,10 +685,11 @@ resize_handler (struct widget *widget, int32_t width, int32_t height, void *data
 
 	if (message_window->progressbar) {
 		progressbar = message_window->progressbar;
-		widget_set_allocation (progressbar->widget, x, allocation.y + height - 16*2 - 24*2,
-		                                      240, 24);
-		 /* do not draw the entry and buttons if there is a progressbar */
-		return;
+		widget_set_allocation (progressbar->widget, x - 20, allocation.y + height - 16*2 - 54*2,
+		                                      280, 24);
+		 /* do not draw the entry and buttons if there is a callback */
+		if (message_window->wlmessage->progress_callback)
+			return;
 	}
 
 	if (message_window->entry) {
@@ -1077,6 +1078,8 @@ wlmessage_set_progress (struct wlmessage *wlmessage, float progress)
 {
 	if (!wlmessage)
 		return;
+	if ((progress < 0.0) || (progress > 1.0))
+		return;
 
 	struct message_window *message_window = wlmessage->message_window;
 	struct progressbar *progressbar;
@@ -1181,6 +1184,14 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 		widget_set_button_handler (button->widget, button_click_handler);
 		widget_set_touch_down_handler (button->widget, button_touch_down_handler);
 		widget_set_touch_up_handler (button->widget, button_touch_up_handler);
+	}
+
+	 /* do not draw the entry and buttons if there is a callback */
+	if (wlmessage->progress_callback) {
+		widget_set_redraw_handler (entry->widget, NULL);
+		wl_list_for_each (button, &message_window->button_list, link) {
+			widget_set_redraw_handler (button->widget, NULL);
+		}
 	}
 
 	extended_width = (get_max_length_of_lines (message_window->message)) - 35;
