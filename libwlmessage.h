@@ -59,6 +59,9 @@ char *
 wlmessage_get_textfield (struct wlmessage *wlmessage);
 
 void
+wlmessage_set_progress_callback (struct wlmessage *wlmessage, void (*callback) (struct wlmessage *wlmessage, void *data), void *data);
+
+void
 wlmessage_set_progress (struct wlmessage *wlmessage, float progress);
 
 float

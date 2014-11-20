@@ -66,6 +66,8 @@ struct wlmessage {
 	struct display *display;
 	struct message_window *message_window;
 	struct wl_text_input_manager *text_input_manager;
+	void (*progress_callback) (struct wlmessage *wlmessage, void *data);
+	void *progress_data;
 	int return_value;
 	int timeout;
 };
@@ -116,6 +118,15 @@ get_lines (char *text)
 	gchar **lines = g_strsplit (text, "\n", -1);
 
 	return lines;
+}
+
+void
+update_window (struct window *window)
+{
+	struct rectangle allocation;
+
+	window_get_allocation (window, &allocation);
+	window_schedule_resize (window, allocation.width, allocation.height);
 }
 
  /* ---------------------------------------- */
@@ -709,12 +720,20 @@ static void
 redraw_handler (struct widget *widget, void *data)
 {
 	struct message_window *message_window = data;
+	struct wlmessage *wlmessage = message_window->wlmessage;
 	struct rectangle allocation;
 	cairo_surface_t *surface;
 	cairo_t *cr;
 	cairo_text_extents_t extents;
 	int lines_nb;
 	char **lines;
+
+	 /* we launch the callback, and update the window to redraw again */
+	if (wlmessage->progress_callback) {
+		wlmessage->progress_callback (wlmessage,
+		                              wlmessage->progress_data);
+		update_window (message_window->window);
+	}
 
 	widget_get_allocation (message_window->widget, &allocation);
 
@@ -1044,6 +1063,16 @@ wlmessage_get_textfield (struct wlmessage *wlmessage)
 }
 
 void
+wlmessage_set_progress_callback (struct wlmessage *wlmessage, void (*callback) (struct wlmessage *wlmessage, void *data), void *data)
+{
+	if (!wlmessage)
+		return;
+
+	wlmessage->progress_callback = callback;
+	wlmessage->progress_data = data;
+}
+
+void
 wlmessage_set_progress (struct wlmessage *wlmessage, float progress)
 {
 	if (!wlmessage)
@@ -1187,6 +1216,8 @@ wlmessage_create ()
 	struct wlmessage *wlmessage;
 
 	wlmessage = xzalloc (sizeof *wlmessage);
+	wlmessage->progress_callback = NULL;
+	wlmessage->progress_data = NULL;
 	wlmessage->return_value = 0;
 	wlmessage->timeout = 0;
 
@@ -1210,6 +1241,10 @@ wlmessage_destroy (struct wlmessage *wlmessage)
 {
 	if (!wlmessage)
 		return;
+	if (wlmessage->progress_callback) {
+		wlmessage->progress_callback = NULL;
+		display_exit (wlmessage->display);
+	}
 
 	struct message_window *message_window = wlmessage->message_window;
 
