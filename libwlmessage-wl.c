@@ -1255,6 +1255,7 @@ wlmessage_destroy (struct wlmessage *wlmessage)
 	if (wlmessage->progress_callback) {
 		wlmessage->progress_callback = NULL;
 		display_exit (wlmessage->display);
+		return;
 	}
 
 	struct message_window *message_window = wlmessage->message_window;
