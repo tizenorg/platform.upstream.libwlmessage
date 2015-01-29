@@ -9,6 +9,7 @@
 #include "text-client-protocol.h"
 #include "libwlmessage.h"
 #define MAX_LINES 6
+#define MAX_BUTTONS 6
 
 
 struct message_window {
@@ -674,19 +675,23 @@ resize_handler (struct widget *widget, int32_t width, int32_t height, void *data
 	struct message_window *message_window = data;
 	struct progressbar *progressbar;
 	struct entry *entry;
-	struct button *button;
+	struct button *button, *button_sub;
 	struct rectangle allocation;
-	int buttons_width, extended_width;
-	int x;
+	int buttons_width, extended_width, extended_height;
+	int x, i, j;
 
 	widget_get_allocation (widget, &allocation);
 
 	x = allocation.x + (width - 240)/2;
 
+	extended_height = 0;
+	if (message_window->buttons_nb >= 4)
+		extended_height = 38;
+
 	if (message_window->progressbar) {
 		progressbar = message_window->progressbar;
-		widget_set_allocation (progressbar->widget, x - 20, allocation.y + height - 16*2 - 32*2 - 28,
-		                                            280, 24);
+		widget_set_allocation (progressbar->widget, x - 20, allocation.y + height - extended_height
+		                                                    - 16*2 - 32*2 - 28, 280, 24);
 		 /* do not draw the entry and buttons if there is a callback */
 		if (message_window->wlmessage->progress_callback)
 			return;
@@ -694,26 +699,69 @@ resize_handler (struct widget *widget, int32_t width, int32_t height, void *data
 
 	if (message_window->entry) {
 		entry = message_window->entry;
-		widget_set_allocation (entry->widget, x, allocation.y + height - 16*2 - 32*2,
-		                                      240, 32);
+		widget_set_allocation (entry->widget, x, allocation.y + height - extended_height
+		                                         - 16*2 - 32*2, 240, 32);
 	}
 
+	i = 0;
 	buttons_width = 0;
 	wl_list_for_each (button, &message_window->button_list, link) {
 		extended_width = strlen(button->caption) - 5;
 		if (extended_width < 0) extended_width = 0;
 		buttons_width += 60 + extended_width*10;
+		if (((message_window->buttons_nb == 6)&&(i == 2)) ||
+		    ((message_window->buttons_nb == 5)&&(i == 1)) ||
+		    ((message_window->buttons_nb == 4)&&(i == 1)))
+			break;
+		i++;
 	}
 
-	x = allocation.x + (width - buttons_width)/2
-	                 - (message_window->buttons_nb-1)*10;
+	if (message_window->buttons_nb <= 3)
+		x = allocation.x + (width - buttons_width)/2
+		                 - (message_window->buttons_nb-1)*10;
+	else if (message_window->buttons_nb == 4)
+		x = allocation.x + (width - buttons_width)/2 - 1*10;
+	else
+		x = allocation.x + (width - buttons_width)/2 - 2*10;
 
+	i = 0;
 	wl_list_for_each (button, &message_window->button_list, link) {
 		extended_width = strlen(button->caption) - 5;
 		if (extended_width < 0) extended_width = 0;
-		widget_set_allocation (button->widget, x, allocation.y + height - 16 - 32,
-		                                       60 + extended_width*10, 32); 
-		x += 60 + extended_width*10 + 10;
+		if (((message_window->buttons_nb == 6)&&((i <= 2))) ||
+		    ((message_window->buttons_nb == 5)&&((i <= 1))) ||
+		    ((message_window->buttons_nb == 4)&&((i <= 1))))
+			widget_set_allocation (button->widget, x, allocation.y + height - extended_height - 16 - 32,
+		                                               60 + extended_width*10, 32);
+		else
+			widget_set_allocation (button->widget, x, allocation.y + height - 16 - 32,
+		                                               60 + extended_width*10, 32);
+		if ((message_window->buttons_nb == 6)&&(i == 2)) {
+			j = buttons_width = 0;
+			wl_list_for_each (button_sub, &message_window->button_list, link) {
+				j++;
+				if (j <= 3)
+					continue;
+				extended_width = strlen(button_sub->caption) - 5;
+				if (extended_width < 0) extended_width = 0;
+				buttons_width += 60 + extended_width*10;
+			}
+			x = allocation.x + (width - buttons_width)/2 - 2*10;
+		} else if (((message_window->buttons_nb == 4)&&(i == 1)) ||
+		           ((message_window->buttons_nb == 5)&&(i == 1))) {
+			j = buttons_width = 0;
+			wl_list_for_each (button_sub, &message_window->button_list, link) {
+				j++;
+				if (j <= 2)
+					continue;
+				extended_width = strlen(button_sub->caption) - 5;
+				if (extended_width < 0) extended_width = 0;
+				buttons_width += 60 + extended_width*10;
+			}
+			x = allocation.x + (width - buttons_width)/2 - 1*10;
+		} else
+			x += 60 + extended_width*10 + 10;
+		i++;
 	}
 }
 
@@ -986,6 +1034,9 @@ wlmessage_add_button (struct wlmessage *wlmessage, unsigned int index, char *cap
 	struct message_window *message_window = wlmessage->message_window;
 	struct button *button;
 
+	if (message_window->buttons_nb == MAX_BUTTONS)
+		return;
+
 	button = xzalloc (sizeof *button);
 	button->caption = strdup (caption);
 	button->value = index;
@@ -1141,6 +1192,7 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 	struct entry *entry = NULL;
 	struct button *button = NULL;
 	int extended_width = 0;
+	int extended_height = 0;
 	int lines_nb = 0;
 
 	wlmessage->display = NULL;
@@ -1199,6 +1251,10 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 	 if (extended_width < 0) extended_width = 0;
 	lines_nb = get_number_of_lines (message_window->message);
 
+	extended_height = 0;
+	if (message_window->buttons_nb >= 4)
+		extended_height = 32;
+
 	window_set_user_data (message_window->window, message_window);
 	window_set_keyboard_focus_handler(message_window->window, keyboard_focus_handler);
 	window_set_key_handler (message_window->window, key_handler);
@@ -1209,7 +1265,8 @@ wlmessage_show (struct wlmessage *wlmessage, char **input_text)
 	                        480 + extended_width*10,
 	                        280 + lines_nb*24 + (!message_window->progressbar ? 0 : 1)*24
 	                                          + (!message_window->entry ? 0 : 1)*32
-	                                          + (!message_window->buttons_nb ? 0 : 1)*32);
+	                                          + (!message_window->buttons_nb ? 0 : 1)*32
+	                                          + extended_height);
 
 	display_set_user_data (wlmessage->display, wlmessage);
 	display_set_global_handler (wlmessage->display, global_handler);

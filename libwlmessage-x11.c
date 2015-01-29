@@ -17,7 +17,7 @@
 
 #include "libwlmessage.h"
 #define MAX_LINES 6
-#define MAX_BUTTONS 3
+#define MAX_BUTTONS 6
 
 
 struct message_window {
@@ -201,6 +201,10 @@ resize_handler (Widget widget, XtPointer data, XEvent *event, Boolean *d)
 			exit (0);
 	}
 
+	height = 0;
+	if ((message_window->buttons_nb == 4) || (message_window->buttons_nb == 6))
+		height = 32;
+
 	if (event->type == ConfigureNotify) {
 		XtConfigureWidget (message_window->label, (event->xconfigure.width - (event->xconfigure.width-100)) / 2,
 		                                           (!message_window->icon ? 10 : 80),
@@ -209,20 +213,34 @@ resize_handler (Widget widget, XtPointer data, XEvent *event, Boolean *d)
 		                                           1);
 		if (message_window->entry)
 			XtConfigureWidget (message_window->entry, (event->xconfigure.width - (event->xconfigure.width-150)) /2,
-			                                           event->xconfigure.height - 80,
+			                                           event->xconfigure.height - 80 - height,
 			                                           event->xconfigure.width - 150,
 			                                           20,
 			                                           1);
 		XtConfigureWidget (message_window->form_b, ((event->xconfigure.width-280) / 2) - 10,
-		                                            event->xconfigure.height - 55,
-		                                            290, 50,
+		                                            event->xconfigure.height - 55 - height,
+		                                            290, 50 + height,
 		                                            1);
 		for (i = 0; i < message_window->buttons_nb; i++) {
-			XtConfigureWidget (message_window->button_list[i]->button,
-			                   (280-(message_window->buttons_nb*80))/(message_window->buttons_nb+1) + i*80 + (i+1)*10,
-			                   10,
-			                   80, 30,
-			                   1);
+			if (message_window->buttons_nb <= 3)
+				XtConfigureWidget (message_window->button_list[i]->button,
+				                   (280-(message_window->buttons_nb*80))/(message_window->buttons_nb+1) + i*80 + (i+1)*10,
+				                   10,  80, 30,  1);
+			else if (message_window->buttons_nb == 4) {
+				if (i <= 1)
+					XtConfigureWidget (message_window->button_list[i]->button,
+					                   (280-(2*80))/(2+1) + i*80 + (i+1)*10, 10,  80, 30,  1);
+				else
+					XtConfigureWidget (message_window->button_list[i]->button,
+					                   (280-(2*80))/(2+1) + (i-2)*80 + (i-2+1)*10, 10 + 38,  80, 30,  1);
+			} else if (message_window->buttons_nb == 6) {
+				if (i <= 2)
+					XtConfigureWidget (message_window->button_list[i]->button,
+					                   (280-(3*80))/(3+1) + i*80 + (i+1)*10, 10,  80, 30,  1);
+				else
+					XtConfigureWidget (message_window->button_list[i]->button,
+					                   (280-(3*80))/(3+1) + (i-3)*80 + (i-3+1)*10, 10 + 38,  80, 30,  1);
+			}
 		}
 
 		 /* force redraw */
@@ -722,7 +740,15 @@ form:
 		XtVaSetValues (button->button, XtVaTypedArg, XtNbackground, XtRString, "light gray", strlen("light gray")+1, NULL);
 		XtVaSetValues (button->button, XtNhighlightThickness, 0, NULL);
 		if (prev_button) {
-			XtVaSetValues (button->button, XtNfromHoriz, prev_button->button, NULL);
+			if ((message_window->buttons_nb <= 3)
+			    || (message_window->buttons_nb == 5)
+			    || ((message_window->buttons_nb == 4)&&((i == 1)||(i == 3)))
+			    || ((message_window->buttons_nb == 6)&&((i == 1)||(i == 2)||(i == 4)||(i == 5))))
+				XtVaSetValues (button->button, XtNfromHoriz, prev_button->button, NULL);
+			if ((message_window->buttons_nb == 4)&&(i > 1))
+				XtVaSetValues (button->button, XtNfromVert, message_window->button_list[i-2]->button, NULL);
+			if ((message_window->buttons_nb == 6)&&(i > 2))
+				XtVaSetValues (button->button, XtNfromVert, message_window->button_list[i-3]->button, NULL);
 		}
 		XtAddEventHandler (button->button, ButtonPressMask | ButtonReleaseMask |
 	        	                   EnterWindowMask | LeaveWindowMask,
@@ -754,8 +780,9 @@ form:
 	XStoreName (wlmessage->display, XtWindow(message_window->window), message_window->title);
 
 	wc.width = 420 + extended_width*10;
-	wc.height = 240 + lines_nb*20; /*+ (!message_window->entry ? 0 : 1)*32
-	                               + (!message_window->buttons_nb ? 0 : 1)*32);*/
+	wc.height = 240 + lines_nb*20;
+	if ((message_window->buttons_nb == 4) || (message_window->buttons_nb == 6))
+		wc.height += 32;
 	XConfigureWindow (wlmessage->display, XtWindow(message_window->window), CWWidth | CWHeight, &wc);
 
 	sh.flags = PMinSize;
