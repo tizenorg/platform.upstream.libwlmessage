@@ -53,8 +53,8 @@ Development components for the %{name} package
 cp %{SOURCE1} .
 
 %build
-export CFLAGS+=" -flto "
-export CXXFLAGS+=" -flto "
+export CFLAGS+=" -flto  -fvisibility=hidden -DEXPORT_API=\"__attribute__((visibility(\\\"default\\\")))\" "
+export CXXFLAGS+=" -flto  -fvisibility=hidden -DEXPORT_API=\"__attribute__((visibility(\\\"default\\\")))\" "
 
 %reconfigure \
 %if %{with x}
