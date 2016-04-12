@@ -53,6 +53,9 @@ Development components for the %{name} package
 cp %{SOURCE1} .
 
 %build
+export CFLAGS+=" -flto "
+export CXXFLAGS+=" -flto "
+
 %reconfigure \
 %if %{with x}
  --enable-x11 --disable-wayland
